@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>아마준 견적 관리자 페이지</title>
+    <style>
+        body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: #f4f6f9; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        h2 { color: #34495e; margin-top: 30px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; color: #333; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background: #3498db; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 14px; }
+        button:hover { background: #2980b9; }
+        .btn-danger { background: #e74c3c; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-success { background: #2ecc71; width: 100%; font-size: 18px; padding: 15px; margin-top: 20px; }
+        .btn-success:hover { background: #27ae60; }
+        .admin-list, .category-list { margin-top: 15px; }
+        .card { background: #f9f9f9; padding: 15px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; position: relative; }
+        .remove-btn { position: absolute; top: 15px; right: 15px; }
+        .item-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+        .item-row input { flex: 1; }
+        .item-row .price { max-width: 120px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>아마준 맞춤장례 관리자 설정</h1>
+    <p style="text-align:center; color:#7f8c8d;">이 설정은 현재 브라우저에만 저장됩니다.</p>
+
+    <!-- 카카오톡 관리자 설정 -->
+    <h2>💬 카카오톡 오픈채팅방 / 계정 설정</h2>
+    <div id="adminContainer" class="admin-list"></div>
+    <button onclick="addAdmin()">+ 관리자 추가</button>
+
+    <!-- 견적 항목 설정 -->
+    <h2>📦 견적 항목 설정</h2>
+    <div id="categoryContainer" class="category-list"></div>
+    <button onclick="addCategory()">+ 카테고리 추가</button>
+
+    <button class="btn-success" onclick="saveSettings()">💾 모든 설정 저장하기</button>
+</div>
+
+<script>
+    // 기본 데이터 구조
+    const defaultData = {
+        admins: [
+            { name: "관리자1", link: "https://open.kakao.com/o/xxxxxx" }
+        ],
+        categories: [
+            {
+                name: "고인 예복", id: "cloth", isFixed: false, options: [
+                    { name: "인조견사", price: 60, unit: "만원" },
+                    { name: "삼베", price: 50, unit: "만원" },
+                    { name: "모시", price: 40, unit: "만원" }
+                ]
+            },
+            {
+                name: "관 (오동나무)", id: "coffin", isFixed: false, options: [
+                    { name: "1.5인치 (45mm)", price: 35, unit: "만원" },
+                    { name: "0.6~1.0인치", price: 15, unit: "만원" }
+                ]
+            },
+            {
+                name: "특수차량", id: "car", isFixed: true, options: [
+                    { name: "고인 전용 리무진", price: 48, defaultPriceDesc:"480,000원", unit:"대", desc:"기본거리(관내)" },
+                    { name: "유가족 버스 (35인승)", price: 43, defaultPriceDesc:"430,000원", unit:"대", desc:"35인승" }
+                ]
+            }
+        ]
+    };
+
+    let appData = JSON.parse(localStorage.getItem('amajun_data')) || defaultData;
+
+    function renderAdmins() {
+        const container = document.getElementById('adminContainer');
+        container.innerHTML = '';
+        appData.admins.forEach((admin, i) => {
+            container.innerHTML += `
+                <div class="card">
+                    <button class="remove-btn btn-danger" onclick="removeAdmin(${i})">삭제</button>
+                    <div class="form-group">
+                        <label>관리자 이름</label>
+                        <input type="text" value="${admin.name}" onchange="appData.admins[${i}].name=this.value">
+                    </div>
+                    <div class="form-group">
+                        <label>카카오톡 오픈프로필 / 채팅방 링크</label>
+                        <input type="text" value="${admin.link}" onchange="appData.admins[${i}].link=this.value">
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    function addAdmin() {
+        appData.admins.push({ name: "새 관리자", link: "" });
+        renderAdmins();
+    }
+
+    function removeAdmin(i) {
+        appData.admins.splice(i, 1);
+        renderAdmins();
+    }
+
+    function renderCategories() {
+        const container = document.getElementById('categoryContainer');
+        container.innerHTML = '';
+        appData.categories.forEach((cat, cIdx) => {
+            let optionsHtml = '';
+            cat.options.forEach((opt, oIdx) => {
+                optionsHtml += `
+                    <div class="item-row">
+                        <input type="text" placeholder="항목명" value="${opt.name}" onchange="appData.categories[${cIdx}].options[${oIdx}].name=this.value">
+                        <input type="number" class="price" placeholder="금액(만)" value="${opt.price}" onchange="appData.categories[${cIdx}].options[${oIdx}].price=parseInt(this.value)||0">
+                        <input type="text" style="max-width:80px;" placeholder="단위" value="${opt.unit}" onchange="appData.categories[${cIdx}].options[${oIdx}].unit=this.value">
+                        <input type="text" placeholder="설명(선택)" value="${opt.desc||''}" onchange="appData.categories[${cIdx}].options[${oIdx}].desc=this.value">
+                        <button class="btn-danger" style="padding: 10px;" onclick="removeOption(${cIdx}, ${oIdx})">X</button>
+                    </div>
+                `;
+            });
+
+            container.innerHTML += `
+                <div class="card">
+                    <button class="remove-btn btn-danger" onclick="removeCategory(${cIdx})">카테고리 삭제</button>
+                    <div class="form-group" style="width:70%;">
+                        <label>카테고리명</label>
+                        <input type="text" value="${cat.name}" onchange="appData.categories[${cIdx}].name=this.value">
+                    </div>
+                    <div class="form-group">
+                        <label>입력 형태</label>
+                        <select onchange="appData.categories[${cIdx}].isFixed = (this.value === 'fixed'); renderCategories();">
+                            <option value="dropdown" ${!cat.isFixed ? 'selected' : ''}>드롭다운 선택형 (예: 관, 예복)</option>
+                            <option value="fixed" ${cat.isFixed ? 'selected' : ''}>고정 항목 수량형 (예: 인력, 꽃)</option>
+                        </select>
+                    </div>
+                    <hr>
+                    <label>상세 항목들 (가격은 '만' 단위로 입력)</label>
+                    ${optionsHtml}
+                    <button onclick="addOption(${cIdx})" style="margin-top:10px;">+ 항목 추가</button>
+                </div>
+            `;
+        });
+    }
+
+    function addCategory() {
+        appData.categories.push({ name: "새 카테고리", id: "cat_" + Date.now(), isFixed: false, options: [] });
+        renderCategories();
+    }
+
+    function removeCategory(i) {
+        if(confirm('이 카테고리를 삭제하시겠습니까?')) {
+            appData.categories.splice(i, 1);
+            renderCategories();
+        }
+    }
+
+    function addOption(cIdx) {
+        appData.categories[cIdx].options.push({ name: "새 항목", price: 0, unit: "개", desc: "" });
+        renderCategories();
+    }
+
+    function removeOption(cIdx, oIdx) {
+        appData.categories[cIdx].options.splice(oIdx, 1);
+        renderCategories();
+    }
+
+    function saveSettings() {
+        localStorage.setItem('amajun_data', JSON.stringify(appData));
+        alert('설정이 저장되었습니다. 견적 페이지를 새로고침하시면 반영됩니다.');
+    }
+
+    window.onload = function() {
+        renderAdmins();
+        renderCategories();
+    };
+</script>
+
+</body>
+</html>
